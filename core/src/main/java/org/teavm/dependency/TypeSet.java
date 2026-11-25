@@ -182,16 +182,37 @@ class TypeSet {
         return types;
     }
 
+    boolean isSubsetOf(TypeSet other) {
+        if (types != null) {
+            for (int index = types.nextSetBit(0); index >= 0; index = types.nextSetBit(index + 1)) {
+                if (!other.hasType(index)) {
+                    return false;
+                }
+            }
+        } else if (smallTypes != null) {
+            for (int index : smallTypes) {
+                if (!other.hasType(index)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     boolean hasType(DependencyType type) {
+        return hasType(type.index);
+    }
+
+    private boolean hasType(int index) {
         if (smallTypes != null) {
             for (int i = 0; i < smallTypes.length; ++i) {
-                if (smallTypes[i] == type.index) {
+                if (smallTypes[i] == index) {
                     return true;
                 }
             }
             return false;
         }
-        return types != null && types.get(type.index);
+        return types != null && types.get(index);
     }
 
     boolean hasAnyType() {

@@ -104,6 +104,10 @@ class Transition {
             return false;
         }
 
+        if (destination.typeFilter == null) {
+            // Without a filter the destination's types are its whole set, no need to build an array of them
+            return destination.typeSet.isSubsetOf(source.typeSet);
+        }
         for (DependencyType type : destination.getTypesInternal()) {
             if (!source.hasType(type)) {
                 return false;
