@@ -281,7 +281,7 @@ class TypeSet {
         if (transitions == null) {
             transitions = new ObjectArrayList<>();
             for (DependencyNode node : domain()) {
-                if (node.transitions != null) {
+                if (node.transitionList != null) {
                     for (ObjectCursor<Transition> cursor : node.transitionList) {
                         Transition transition = cursor.value;
                         if (transition.filter != null || transition.destination.typeSet != this) {

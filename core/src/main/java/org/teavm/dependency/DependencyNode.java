@@ -32,6 +32,9 @@ import org.teavm.model.MethodReference;
 import org.teavm.model.ValueType;
 
 public class DependencyNode implements ValueDependencyInfo {
+    // Most nodes have very few transitions, up to this limit scanning transitionList is cheaper than a map
+    private static final int TRANSITION_SCAN_LIMIT = 8;
+
     DependencyAnalyzer dependencyAnalyzer;
     List<DependencyConsumer> followers;
     TypeSet typeSet;
@@ -261,16 +264,23 @@ public class DependencyNode implements ValueDependencyInfo {
         if (node == null) {
             throw new IllegalArgumentException("Node must not be null");
         }
-        if (transitions == null) {
-            transitions = new ObjectObjectHashMap<>();
+        if (transitionList == null) {
             transitionList = new ObjectArrayList<>();
         }
-        if (transitions.containsKey(node)) {
+        if (hasTransitionTo(node)) {
             return false;
         }
 
         Transition transition = new Transition(this, node, filter);
-        transitions.put(node, transition);
+        if (transitions != null) {
+            transitions.put(node, transition);
+        } else if (transitionList.size() == TRANSITION_SCAN_LIMIT) {
+            transitions = new ObjectObjectHashMap<>();
+            for (ObjectCursor<Transition> cursor : transitionList) {
+                transitions.put(cursor.value.destination, cursor.value);
+            }
+            transitions.put(node, transition);
+        }
         transitionList.add(transition);
         if (DependencyAnalyzer.shouldLog) {
             System.out.println("Connecting " + tag + " to " + node.tag);
@@ -301,6 +311,18 @@ public class DependencyNode implements ValueDependencyInfo {
         }
 
         return true;
+    }
+
+    private boolean hasTransitionTo(DependencyNode node) {
+        if (transitions != null) {
+            return transitions.containsKey(node);
+        }
+        for (int i = 0; i < transitionList.size(); ++i) {
+            if (transitionList.get(i).destination == node) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void connectArrayItemNodes(DependencyNode node) {
@@ -338,7 +360,7 @@ public class DependencyNode implements ValueDependencyInfo {
         }
         classNodeComplete = true;
 
-        if (classNodeParent == null || classNodeParent.transitions == null) {
+        if (classNodeParent == null || classNodeParent.transitionList == null) {
             return;
         }
 
@@ -506,7 +528,7 @@ public class DependencyNode implements ValueDependencyInfo {
                 break;
             }
 
-            if (node.transitions != null) {
+            if (node.transitionList != null) {
                 for (ObjectCursor<Transition> cursor : node.transitionList) {
                     Transition transition = cursor.value;
                     if (transition.filter == null && transition.destination.typeSet == typeSet
